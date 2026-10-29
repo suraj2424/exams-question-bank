@@ -1,0 +1,29 @@
+{
+  "name": "ibps-po-bilingual-practice",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "bun run --filter web dev",
+    "build": "bun run --filter web build",
+    "start": "bun run --filter web start",
+    "lint": "bun run --filter web lint",
+    "typecheck": "bun run --filter web typecheck",
+    "db:generate": "bun run --filter @qb/db generate",
+    "db:migrate": "bun run --filter @qb/db migrate",
+    "db:push": "bun run --filter @qb/db push",
+    "db:clean": "bun run --filter @qb/db clean",
+    "db:seed": "bun run --filter @qb/db seed",
+    "db:studio": "bun run --filter @qb/db studio",
+    "questions:validate": "bun run apps/worker/src/cli.ts validate-questions",
+    "worker": "bun run apps/worker/src/cli.ts",
+    "rag:ingest": "bun run apps/worker/src/cli.ts rag-ingest",
+    "rag:search": "bun run apps/worker/src/cli.ts rag-search",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  }
+}

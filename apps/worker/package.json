@@ -1,0 +1,22 @@
+{
+  "name": "apps/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cli": "bun run src/cli.ts"
+  },
+  "dependencies": {
+    "@qb/db": "workspace:*",
+    "@qb/shared": "workspace:*",
+    "@huggingface/transformers": "^4.3.2",
+    "cheerio": "^1.2.0",
+    "mupdf": "^1.28.1",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^6.4.299",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6"
+  }
+}

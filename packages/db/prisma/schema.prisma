@@ -1,0 +1,346 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Source {
+  id                  String   @id @default(cuid())
+  name                String
+  baseUrl             String
+  allowedDomains      String[]
+  rightsStatus        String
+  licenceDocumentUrl  String?
+  evidencePath        String?
+  commercialUse       Boolean  @default(false)
+  modificationAllowed Boolean  @default(false)
+  translationAllowed  Boolean  @default(false)
+  redistributionAllowed Boolean @default(false)
+  attributionRequired Boolean  @default(false)
+  termsUrl            String?
+  robotsReviewedDate  DateTime?
+  allowedToCrawl      Boolean  @default(false)
+  allowedToIngestText Boolean  @default(false)
+  allowedToDisplay    Boolean  @default(false)
+  approvedBy          String?
+  approvedAt          DateTime?
+  notes               String?
+  status              String   @default("pending")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  listingUrls         String[] @default([])
+  paperKeys           String[] @default([])
+  lastCrawledAt       DateTime?
+
+  crawlRuns          CrawlRun[]
+  fetchedDocuments   FetchedDocument[]
+  licences           LicenceRecord[]
+  questions          Question[]
+}
+
+model CrawlRun {
+  id           String   @id @default(cuid())
+  sourceId     String
+  seedUrl      String
+  startedAt    DateTime @default(now())
+  finishedAt   DateTime?
+  status       String   @default("running")
+  pagesFetched Int      @default(0)
+  pdfsFound    Int      @default(0)
+  errorCount   Int      @default(0)
+  notes        String?
+  source       Source   @relation(fields: [sourceId], references: [id])
+}
+
+model FetchedDocument {
+  id                  String   @id @default(cuid())
+  sourceId            String
+  url                 String
+  canonicalUrl        String
+  title               String?
+  contentType         String?
+  statusCode          Int?
+  sha256              String
+  storagePath         String?
+  fetchedAt           DateTime @default(now())
+  robotsAllowed       Boolean  @default(false)
+  termsSnapshotPath   String?
+  isPdf               Boolean  @default(false)
+  ingestAllowedAtFetch Boolean @default(false)
+  extractionStatus    String   @default("pending")
+  paperKey            String?
+  docKind             String   @default("questions")
+  parseMethod         String?
+  pageCount           Int?
+  source              Source   @relation(fields: [sourceId], references: [id])
+  candidates          QuestionCandidate[]
+  questionSets        QuestionSet[]
+  mediaAssets         MediaAsset[]
+  papers              Paper[]
+  ingestJobs          IngestJob[]
+  @@unique([sourceId, canonicalUrl, sha256])
+}
+
+model QuestionSet {
+  id                String   @id @default(cuid())
+  groupId           String   @unique
+  sourceDocumentId  String
+  type              String?
+  sharedContext     String?
+  pageStart         Int?
+  pageEnd           Int?
+  confidence        Float?
+  flags             Json?
+  paperKey          String?
+  section           String?
+  media             Json?
+  createdAt         DateTime @default(now())
+
+  sourceDocument    FetchedDocument @relation(fields: [sourceDocumentId], references: [id])
+  candidates        QuestionCandidate[]
+  mediaAssets       MediaAsset[]
+  questions         Question[]
+}
+
+model QuestionCandidate {
+  id                String   @id @default(cuid())
+  sourceDocumentId  String
+  pageNumber        Int?
+  rawText           String
+  cleanedText       String?
+  detectedLanguage  String?
+  status            String   @default("pending_review")
+  reviewerId        String?
+  rejectionReason   String?
+  createdAt         DateTime @default(now())
+  reviewedAt        DateTime?
+  embedding         Json?
+  questionSetId     String?
+  questionNumber    Int?
+  isSharedContext   Boolean  @default(false)
+  extractionConfidence Float?
+  extractionFlags   Json?
+  rawJson           Json?
+  structured        Json?
+  answerKey         String?
+  llmConfidence     Float?
+  gateFailures      String[]
+  sourceDocument    FetchedDocument @relation(fields: [sourceDocumentId], references: [id])
+  questionSet       QuestionSet? @relation(fields: [questionSetId], references: [id])
+}
+
+model Question {
+  id               String   @id
+  exam             String   @default("IBPS_PO")
+  section          String
+  topic            String
+  subtopic         String
+  questionFormat   String   @default("mcq_single")
+  difficulty       Int
+  sourceType       String
+  sourceId         String?
+  sourceUrl        String?
+  licenceId        String?
+  examYear         Int?
+  examStage        String?
+  examShift        String?
+  paperReference   String?
+  status           String   @default("draft")
+  createdBy        String
+  reviewedBy       String?
+  version          Int      @default(1)
+  correctOptionId  String?
+  questionNumber   Int?
+  questionSetId    String?
+  sharedContext    String?
+  sourceDocumentId String?
+  sourcePage       Int?
+  extractionMethod String?
+  llmConfidence    Float?
+  answerSource     String?
+  paperKey         String?
+  paperId          String?
+  embedding        Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  source           Source?  @relation(fields: [sourceId], references: [id])
+  licence          LicenceRecord? @relation(fields: [licenceId], references: [id])
+  variants         QuestionVariant[]
+  options          QuestionOption[]
+  answers          PracticeAnswer[]
+  mediaAssets      MediaAsset[]
+  questionSet      QuestionSet? @relation(fields: [questionSetId], references: [id])
+  paper            Paper? @relation(fields: [paperId], references: [id])
+}
+
+model QuestionVariant {
+  id          String   @id @default(cuid())
+  questionId  String
+  language    String
+  prompt      String
+  explanation String
+  instructions String?
+  glossary    Json?
+  status      String   @default("draft")
+  translator  String?
+  reviewer    String?
+  translationBy String?
+  confidence  Float?
+  updatedAt   DateTime @updatedAt
+
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  @@unique([questionId, language])
+}
+
+model QuestionOption {
+  id                   String   @id
+  questionId           String
+  canonicalKey         String
+  displayOrder         Int
+  enText               String
+  hiText               String
+  media                Json?
+  isCorrect            Boolean  @default(false)
+  optionExplanationEn  String?
+  optionExplanationHi  String?
+  question             Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  @@unique([questionId, canonicalKey])
+}
+
+model PracticeSession {
+  id            String   @id @default(cuid())
+  exam          String   @default("IBPS_PO")
+  questionIds   Json
+  currentIndex  Int      @default(0)
+  score         Int      @default(0)
+  startedAt     DateTime @default(now())
+  expiresAt     DateTime?
+  createdByIpHash String?
+  completedAt   DateTime?
+  answers       PracticeAnswer[]
+}
+
+model PracticeAnswer {
+  id                String   @id @default(cuid())
+  sessionId         String
+  questionId        String
+  selectedOptionId  String
+  isCorrect         Boolean
+  revealedAt        DateTime @default(now())
+  languageAtReveal  String
+  session           PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question          Question @relation(fields: [questionId], references: [id])
+  @@unique([sessionId, questionId])
+}
+
+model LicenceRecord {
+  id                   String   @id @default(cuid())
+  sourceId             String?
+  questionId           String?
+  licenceName          String
+  documentUrl          String?
+  evidencePath         String?
+  commercialUse        Boolean  @default(false)
+  modificationAllowed  Boolean  @default(false)
+  translationAllowed   Boolean  @default(false)
+  redistributionAllowed Boolean @default(false)
+  territory            String?
+  validFrom            DateTime?
+  validUntil           DateTime?
+  attributionText      String?
+  reviewedBy           String?
+  notes                String?
+  source               Source?  @relation(fields: [sourceId], references: [id])
+  questions            Question[]
+}
+
+model MediaAsset {
+  id              String   @id @default(cuid())
+  sourceDocumentId String
+  questionSetId   String?
+  questionId      String?
+  kind            String
+  mimeType        String
+  storagePath     String
+  width           Int?
+  height          Int?
+  description     String?
+  extractedData   Json?
+  ocrText         String?
+  confidence      Float?
+  createdAt       DateTime @default(now())
+
+  sourceDocument  FetchedDocument @relation(fields: [sourceDocumentId], references: [id])
+  questionSet     QuestionSet? @relation(fields: [questionSetId], references: [id])
+  question        Question? @relation(fields: [questionId], references: [id])
+}
+
+model PipelineRun {
+  id           String   @id @default(cuid())
+  sourceId     String?
+  documentId   String?
+  stage        String
+  status       String
+  startedAt    DateTime @default(now())
+  finishedAt   DateTime?
+  stats        Json?
+  error        String?
+}
+
+model Paper {
+  id                String   @id @default(cuid())
+  sourceDocumentId  String
+  paperKey          String
+  title             String?
+  pageCount         Int?
+  totalQuestions    Int      @default(0)
+  answeredQuestions Int      @default(0)
+  status            String   @default("ingested")
+  structured        Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sourceDocument FetchedDocument @relation(fields: [sourceDocumentId], references: [id])
+  answerKeys     PaperAnswerKey[]
+  questions      Question[]
+  ingestJobs     IngestJob[]
+
+  @@unique([sourceDocumentId, paperKey])
+}
+
+model PaperAnswerKey {
+  id             String   @id @default(cuid())
+  paperId        String
+  questionNumber Int
+  answerKey      String
+  explanation    String?
+  pageNumber     Int?
+  rawText        String?
+  createdAt      DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, questionNumber])
+}
+
+model IngestJob {
+  id               String   @id @default(cuid())
+  sourceDocumentId String?
+  paperId          String?
+  fileName         String
+  sourceUrl        String?
+  status           String   @default("queued")
+  stage            String?
+  stats            Json?
+  error            String?
+  createdAt        DateTime @default(now())
+  finishedAt       DateTime?
+
+  sourceDocument FetchedDocument? @relation(fields: [sourceDocumentId], references: [id])
+  paper          Paper?           @relation(fields: [paperId], references: [id])
+}
